@@ -1,0 +1,219 @@
+{
+  "name": "GitHub High Value Lead Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "=GET",
+        "url": "={{ 'https://api.github.com/users/' + $json.body.sender.login }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GITHUB_TOKEN"             }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "ee172868-0843-4b14-8760-8c793025767a",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "71ebfc62-b278-4a17-ba35-78d190f13a6f",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "29af69e7-773f-4d59-8f7a-882c16d9f5c2",
+      "name": "Webhook",
+      "webhookId": "71ebfc62-b278-4a17-ba35-78d190f13a6f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "c6b099d0-ac2f-470f-a8d7-5316757d9185",
+              "leftValue": "={{ $json.followers }}",
+              "rightValue": 100,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "ed9f4512-480d-4123-bd33-7187d24ac98d",
+              "leftValue": "={{ $json.public_repos }}",
+              "rightValue": 50,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        512,
+        0
+      ],
+      "id": "99196088-8b41-4df6-bae3-9165bdb8ebb9",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ \"Generate an engaging, personalized one-sentence B2B sales pitch for \" + $json.name + \" (\" + $json.login + \") working at \" + ($json.company || 'their organization') + \" with bio: '\" + ($json.bio || 'Open source contributor') + \"'. Keep it strictly to one concise sentence.\" }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        736,
+        0
+      ],
+      "id": "f0b43fc0-e54d-4ced-be93-214996b5e5e2",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        208
+      ],
+      "id": "e62c3322-ec41-4357-a3bc-54cee3d2e856",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",   
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/YOUR_DISCORD_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  \"content\": `🎯 **New High-Value Lead Detected!**\\n\\n👤 **User:** ${$('HTTP Request').item.json.name || $('HTTP Request').item.json.login} (@${$('HTTP Request').item.json.login})\\n🏢 **Company:** ${$('HTTP Request').item.json.company || 'N/A'}\\n📍 **Location:** ${$('HTTP Request').item.json.location || 'N/A'}\\n👥 **Followers:** ${$('HTTP Request').item.json.followers} | 📦 **Public Repos:** ${$('HTTP Request').item.json.public_repos}\\n🔗 **Profile:** ${$('HTTP Request').item.json.html_url}\\n\\n💡 **AI Pitch:**\\n${$json.text}`\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        992.3269682310327,
+        0
+      ],
+      "id": "248d576d-61eb-4daf-90c9-71e8986a91b0",
+      "name": "HTTP Request1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7744cda3-91a2-404b-acba-26181c8386f0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "94af41fcb00dda8de1fb25de0472579c8edbf2af0dab4e862a5230c8b796f208"
+  },
+  "nodeGroups": [],
+  "id": "YDzAVCU6OqhiVUOd",
+  "tags": []
+}
